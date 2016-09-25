@@ -15,12 +15,17 @@ en el repo https://github.com/jpaciello/compiladores
 
 tabla_simbolos = {
     'literal': 'LITERAL_CADENA',
+    'numero': 'LITERAL_NUM',
     '{': 'L_LLAVE',
     '}': 'R_LLAVE',
     ',': 'COMA',
     ':': 'DOS_PUNTOS',
     '[': 'L_CORCHETE',
     ']': 'R_CORCHETE',
+    'true': 'PR_TRUE',
+    'TRUE': 'PR_TRUE',
+    'false': 'PR_FALSE',
+    'FALSE': 'PR_FALSE',
     '': 'EOF',
 }
 
@@ -29,7 +34,6 @@ class Entrada():
     def __init__(self, complex, lexema):
         self.complex = complex
         self.lexema = lexema
-        # TODO notar que falta tipo de dato
 
 
 class Token():
@@ -53,7 +57,7 @@ class Token():
         self.lexema = lexema
 
     def __str__(self):
-        return u'%s -> %s' % (self.complex ,self.lexema)
+        return u'%s -> %s' % (self.complex, self.lexema)
 
     def alimentar_lexema(self, c):
         """ formamos el lexema anexando un caracter """
@@ -88,34 +92,42 @@ def siguiente_token(f):
 
     # no es EOF. Comenzar a evaluar cada caracter
     if c in [' ', '\t']:
-        # eliminar espacios en blanco e incrementar numero de tabs
-        print "Es algo de tab o espacio en blanco"
 
-    elif c == '\n':
-        print "Es Salto de linea"
+        while c in[' ', '\t']:
+            # eliminar espacios en blanco e incrementar numero de tabs
+            # print "Es algo de tab o espacio en blanco"
+            c = f.read(1)
+
+        else:
+            f.seek(f.tell() - 1)
+
+        token = None
+
+    elif c in ['\r', '\n']:
+        while c in ['\r', '\n']:
+            c = f.read(1)
+        else:
+            siguiente_token(f)
+
+        token = None
 
     elif c.isalpha():
-        # TODO hace falta esto? En la tarea no se especifica ID como componente léxico
+        # puede aceptarse true|TURE|false|FALSE|null|NULL
+        # TODO null|NULL
 
         # es caracter alfabético
         # Comenzar a agrupar caracteres para buscar en la tabla
         # de variables
 
-        # TODO aquí autómata de identificador
-
-        while c.isalpha() or c.isdigit():
+        while c.isalpha():
             token.alimentar_lexema(c)
             c = f.read(1)
 
-    elif c.isdigit():
-        # es caracter numérico
-
-        # TODO aquí autómata de números
-        pass
+        else:
+            f.seek(f.tell() - 1)
+            token.complex = token.lexema
 
     elif c == '"':
-        # TODO aquí autómata de literal
-
         token.alimentar_lexema(c)
         c = f.read(1)
 
@@ -152,19 +164,115 @@ def siguiente_token(f):
         token.alimentar_lexema(c)
         token.complex = '}'
 
+    elif c.isdigit():
+        # es caracter numérico
+
+        estado = 1  # estado inicial
+        acepto = False
+
+        f.seek(f.tell() - 1)
+
+        while True:
+            c = f.read(1)
+
+            if c in [',', ']', '}'] and acepto:
+                f.seek(f.tell() - 1)
+                break
+
+            # Por defecto, no aceptar cada nuevo caracter
+            # hasta que sea evaluado y explícitamente aceptado
+            acepto = False
+
+            if estado == 1:
+                if c.isdigit():
+                    estado = 2
+                    acepto = True
+
+                else:
+                    break
+
+            elif estado == 2:
+                if c.isdigit():
+                    estado = 2
+                    acepto = True
+
+                elif c == '.':
+                    estado = 3
+
+                elif c in ['e', 'E']:
+                    estado = 5
+
+                else:
+                    break
+
+            elif estado == 3:
+                if c.isdigit():
+                    estado = 4
+                    acepto = True
+
+                else:
+                    break
+
+            elif estado == 4:
+                if c.isdigit():
+                    estado = 4
+                    acepto = True
+
+                elif c in ['e', 'E']:
+                    estado = 5
+
+                else:
+                    break
+
+            elif estado == 5:
+                if c in ['+', '-']:
+                    estado = 6
+
+                elif c.isdigit():
+                    estado = 6
+
+                else:
+                    break
+
+            elif estado == 6:
+                if c.isdigit():
+                    estado = 6
+                    acepto = True
+
+                else:
+                    break
+
+            token.alimentar_lexema(c)
+
+        if c in [ '\b', '\f', '\n', '\r', '\r', '\t', ' ']:
+            acepto = True
+            f.seek(f.tell() - 1)
+
+        if not acepto:
+            print u'Caracter inesperado: %s' % c
+
+        else:
+            token.complex = 'numero'
+
     return token
 
 if __name__ == '__main__':
+
     init_tabla()
     init_tabla_simbolos()
 
-    filename = 'input_test.txt'
-    with open(filename) as f:
+    filename = 'fuente.txt'
+
+    with open(filename, 'rb') as f:
+
         while True:
+
+            # TODO contador de lineas
+
             token = siguiente_token(f)
 
-            print token.complex
-            print tabla_simbolos.get(token.complex)
+            if token is not None:
+                if token.complex == 'EOF':
+                    break
 
-            if token.complex == 'EOF':
-                break
+                print  tabla_simbolos.get(token.complex).ljust(17), token.lexema.ljust(15)
