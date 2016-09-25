@@ -13,7 +13,10 @@ El código es una adaptación del fuente original
 en el repo https://github.com/jpaciello/compiladores
 """
 
-tabla_simbolos = {
+import os
+import sys
+
+TABLA_SIMBOLOS = {
     'literal': 'LITERAL_CADENA',
     'numero': 'LITERAL_NUM',
     '{': 'L_LLAVE',
@@ -68,14 +71,6 @@ class Token():
         return self.lexema[-1:]
 
 
-def init_tabla():
-    pass
-
-
-def init_tabla_simbolos():
-    pass
-
-
 def siguiente_token(f):
     i = 0
     acepto = False
@@ -106,8 +101,13 @@ def siguiente_token(f):
     elif c in ['\r', '\n']:
         while c in ['\r', '\n']:
             c = f.read(1)
+
         else:
-            siguiente_token(f)
+            if not c:
+                token.complex = 'EOF'
+                return token
+
+            f.seek(f.tell() - 1)
 
         token = None
 
@@ -181,7 +181,7 @@ def siguiente_token(f):
 
             # Por defecto, no aceptar cada nuevo caracter
             # hasta que sea evaluado y explícitamente aceptado
-            acepto = False
+            # acepto = False
 
             if estado == 1:
                 if c.isdigit():
@@ -189,9 +189,12 @@ def siguiente_token(f):
                     acepto = True
 
                 else:
+                    acepto = False
                     break
 
             elif estado == 2:
+                acepto = False
+
                 if c.isdigit():
                     estado = 2
                     acepto = True
@@ -203,6 +206,7 @@ def siguiente_token(f):
                     estado = 5
 
                 else:
+                    # acepto = False
                     break
 
             elif estado == 3:
@@ -211,6 +215,7 @@ def siguiente_token(f):
                     acepto = True
 
                 else:
+                    acepto = False
                     break
 
             elif estado == 4:
@@ -222,6 +227,7 @@ def siguiente_token(f):
                     estado = 5
 
                 else:
+                    acepto = False
                     break
 
             elif estado == 5:
@@ -232,6 +238,7 @@ def siguiente_token(f):
                     estado = 6
 
                 else:
+                    acepto = False
                     break
 
             elif estado == 6:
@@ -240,12 +247,13 @@ def siguiente_token(f):
                     acepto = True
 
                 else:
+                    acepto = False
                     break
 
             token.alimentar_lexema(c)
 
-        if c in [ '\b', '\f', '\n', '\r', '\r', '\t', ' ']:
-            acepto = True
+        if c in [ '\b', '\f', '\n', '\r', '\r', '\t', ' '] and acepto:
+            # acepto = True
             f.seek(f.tell() - 1)
 
         if not acepto:
@@ -256,23 +264,30 @@ def siguiente_token(f):
 
     return token
 
+def main(argv):
+
+    if len(argv) < 2:
+        print u'Debe pasar como parámetro el nombre del archivo fuente.'
+        return
+
+    filename = argv[1]
+    if not os.path.isfile(filename):
+        print u'No se encuentra el archivo \'%s\'' % filename
+        return
+
+    else:
+        with open(filename, 'rb') as f:
+
+            while True:
+                token = siguiente_token(f)
+
+                if token is not None:
+                    if token.complex == 'EOF':
+                        break
+
+                    print  TABLA_SIMBOLOS.get(token.complex , '').ljust(17), token.lexema.ljust(15)
+
+
 if __name__ == '__main__':
+    main(sys.argv)
 
-    init_tabla()
-    init_tabla_simbolos()
-
-    filename = 'fuente.txt'
-
-    with open(filename, 'rb') as f:
-
-        while True:
-
-            # TODO contador de lineas
-
-            token = siguiente_token(f)
-
-            if token is not None:
-                if token.complex == 'EOF':
-                    break
-
-                print  tabla_simbolos.get(token.complex).ljust(17), token.lexema.ljust(15)
