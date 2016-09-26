@@ -32,12 +32,11 @@ TABLA_SIMBOLOS = {
     '': 'EOF',
 }
 
+class CaracterInvalido(Exception):
+    pass
 
-class Entrada():
-    def __init__(self, complex, lexema):
-        self.complex = complex
-        self.lexema = lexema
-
+class TokenInvalido(Exception):
+    pass
 
 class Token():
     """ Un token está formado por:
@@ -54,9 +53,8 @@ class Token():
             secuencia de caracteres para el token --> REGEX
     """
 
-    def __init__(self, complex=None, entrada=None, lexema=''):
+    def __init__(self, complex=None, lexema=''):
         self.complex = complex
-        self.entrada = entrada  # no se para que sirve
         self.lexema = lexema
 
     def __str__(self):
@@ -71,10 +69,7 @@ class Token():
         return self.lexema[-1:]
 
 
-def siguiente_token(f):
-    i = 0
-    acepto = False
-    estado = 0
+def siguiente_token(f, num_linea=1):
 
     token = Token()
 
@@ -83,14 +78,13 @@ def siguiente_token(f):
     if not c:
         token.alimentar_lexema(c)
         token.complex = 'EOF'
-        return token
+        return token, num_linea
 
     # no es EOF. Comenzar a evaluar cada caracter
     if c in [' ', '\t']:
 
-        while c in[' ', '\t']:
+        while c in [' ', '\t']:
             # eliminar espacios en blanco e incrementar numero de tabs
-            # print "Es algo de tab o espacio en blanco"
             c = f.read(1)
 
         else:
@@ -100,12 +94,16 @@ def siguiente_token(f):
 
     elif c in ['\r', '\n']:
         while c in ['\r', '\n']:
+
+            if c == '\n':
+                num_linea += 1
+
             c = f.read(1)
 
         else:
             if not c:
                 token.complex = 'EOF'
-                return token
+                return token, num_linea
 
             f.seek(f.tell() - 1)
 
@@ -165,129 +163,138 @@ def siguiente_token(f):
         token.complex = '}'
 
     elif c.isdigit():
-        # es caracter numérico
 
-        estado = 1  # estado inicial
-        acepto = False
+        # necesariamente, el token debe ser 'número'
+        token.complex = 'numero'
+
+        estados_de_aceptacion = [1, 4, 5]
+        caracteres_esperados = ['\b', '\f', '\n', '\r', '\r', '\t',
+                                ' ', ']', '}', ',']
+
+        estado = 0
 
         f.seek(f.tell() - 1)
 
         while True:
             c = f.read(1)
 
-            if c in [',', ']', '}'] and acepto:
-                f.seek(f.tell() - 1)
-                break
-
-            # Por defecto, no aceptar cada nuevo caracter
-            # hasta que sea evaluado y explícitamente aceptado
-            # acepto = False
-
-            if estado == 1:
+            if estado == 0:
                 if c.isdigit():
-                    estado = 2
-                    acepto = True
+                    estado = 1
 
                 else:
-                    acepto = False
+                    break
+
+            elif estado == 1:
+                if c.isdigit():
+                    estado = 1
+
+                elif c == '.':
+                    estado = 2
+
+                elif c in ['e', 'E']:
+                    estado = 3
+
+                else:
                     break
 
             elif estado == 2:
-                acepto = False
-
                 if c.isdigit():
-                    estado = 2
-                    acepto = True
-
-                elif c == '.':
-                    estado = 3
-
-                elif c in ['e', 'E']:
-                    estado = 5
+                    estado = 4
 
                 else:
-                    # acepto = False
                     break
 
             elif estado == 3:
                 if c.isdigit():
-                    estado = 4
-                    acepto = True
+                    estado = 5
+
+                elif c in ['-', '+']:
+                    estado = 6
 
                 else:
-                    acepto = False
                     break
 
             elif estado == 4:
                 if c.isdigit():
                     estado = 4
-                    acepto = True
 
                 elif c in ['e', 'E']:
-                    estado = 5
+                    estado = 3
 
                 else:
-                    acepto = False
                     break
 
             elif estado == 5:
-                if c in ['+', '-']:
-                    estado = 6
-
-                elif c.isdigit():
-                    estado = 6
+                if c.isdigit():
+                    estado = 5
 
                 else:
-                    acepto = False
                     break
 
             elif estado == 6:
                 if c.isdigit():
-                    estado = 6
-                    acepto = True
+                    estado = 5
 
                 else:
-                    acepto = False
                     break
 
             token.alimentar_lexema(c)
 
-        if c in [ '\b', '\f', '\n', '\r', '\r', '\t', ' '] and acepto:
-            # acepto = True
+        if estado in estados_de_aceptacion and c in caracteres_esperados:
+            token.complex = 'numero'
             f.seek(f.tell() - 1)
 
-        if not acepto:
-            print u'Caracter inesperado: %s' % c
-
         else:
-            token.complex = 'numero'
+            CaracterInvalido()
 
-    return token
+    return token, num_linea
+
 
 def main(argv):
-
     if len(argv) < 2:
         print u'Debe pasar como parámetro el nombre del archivo fuente.'
         return
 
-    filename = argv[1]
-    if not os.path.isfile(filename):
-        print u'No se encuentra el archivo \'%s\'' % filename
+    archivo_in = argv[1]
+    if not os.path.isfile(archivo_in):
+        print u'No se encuentra el archivo \'%s\'' % archivo_in
         return
 
     else:
-        with open(filename, 'rb') as f:
+        print u'Escaneando el archivo \'%s\'' % archivo_in
+
+        archivo_out_nombre = 'output.txt'
+        archivo_out = open(archivo_out_nombre, 'wb')
+
+        with open(archivo_in, 'rb') as f_in:
+
+            num_linea = 1
+            prev_num_linea = 1
 
             while True:
-                token = siguiente_token(f)
+                try:
+                    token, num_linea = siguiente_token(f_in, num_linea)
+                except CaracterInvalido:
+                    print u'Caracter invalido. FIN'
+                    break
 
                 if token is not None:
                     if token.complex == 'EOF':
+                        print u'FIN. Archivo de salida: \'%s\'' % archivo_out_nombre
                         break
 
-                    print  TABLA_SIMBOLOS.get(token.complex , '').ljust(17), token.lexema.ljust(15)
+                    # escritura en archivo de salida, considerando el numero de linea
+                    if num_linea > prev_num_linea:
+                        append_char = '\n' * (num_linea - prev_num_linea)
+                        prev_num_linea = num_linea
 
+                    else:
+                        append_char = ' '
+
+                    tipo_token = TABLA_SIMBOLOS.get(token.complex, '')
+
+                    archivo_out.write(append_char + tipo_token)
 
 if __name__ == '__main__':
     main(sys.argv)
-
