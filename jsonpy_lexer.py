@@ -38,6 +38,9 @@ class CaracterInvalido(Exception):
 class TokenInvalido(Exception):
     pass
 
+class ArchivoException(Exception):
+    pass
+
 class Token():
     """ Un token está formado por:
         - Componente léxico:
@@ -251,37 +254,37 @@ def siguiente_token(f, num_linea=1):
     return token, num_linea
 
 
-def main(argv):
+def lexer(argv):
     if len(argv) < 2:
-        print u'Debe pasar como parámetro el nombre del archivo fuente.'
-        return
+        raise ArchivoException(u'Debe pasar como parámetro el nombre del archivo fuente.')
 
     archivo_in = argv[1]
     if not os.path.isfile(archivo_in):
-        print u'No se encuentra el archivo \'%s\'' % archivo_in
-        return
+        raise ArchivoException(u'No se encuentra el archivo \'%s\'' % archivo_in)
 
     else:
         print u'Escaneando el archivo \'%s\'' % archivo_in
 
         archivo_out_nombre = 'output.txt'
-        archivo_out = open(archivo_out_nombre, 'wb')
+        # archivo_out = open(archivo_out_nombre, 'wb')
 
         with open(archivo_in, 'rb') as f_in:
 
             num_linea = 1
             prev_num_linea = 1
 
+            tokens = []
+
             while True:
                 try:
                     token, num_linea = siguiente_token(f_in, num_linea)
                 except CaracterInvalido:
-                    print u'Caracter invalido. FIN'
-                    break
+                    print u'Caracter invalido. Linea %s ' % num_linea
 
                 if token is not None:
+
                     if token.complex == 'EOF':
-                        print u'FIN. Archivo de salida: \'%s\'' % archivo_out_nombre
+                        # print u'FIN. Archivo de salida: \'%s\'' % archivo_out_nombre
                         break
 
                     # escritura en archivo de salida, considerando el numero de linea
@@ -294,7 +297,13 @@ def main(argv):
 
                     tipo_token = TABLA_SIMBOLOS.get(token.complex, '')
 
-                    archivo_out.write(append_char + tipo_token)
+                    tokens.append(tipo_token)
+
+                    # archivo_out.write(append_char + tipo_token)
+
+            return tokens
 
 if __name__ == '__main__':
-    main(sys.argv)
+    lexer(sys.argv)
+
+
