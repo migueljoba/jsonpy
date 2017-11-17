@@ -2,8 +2,8 @@
 
 """
 Analizador Léxico
-Curso: Compiladores y Lenguajes de Bajo de Nivel, 2ndo Sem, 2016
-TAREA 1 - Analisis Lexico
+Curso: Compiladores y Lenguajes de Bajo de Nivel, 2ndo Sem, 2017
+TAREA 1 - Analisis Léxico
 
 Descripción:
 Implementar un analizador lexico que reconozca tokens
