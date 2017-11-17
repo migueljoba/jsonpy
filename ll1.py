@@ -2,8 +2,8 @@
 
 """
 Analizador Sint[actico aplicando el algoritmo LL!
-Curso: Compiladores y Lenguajes de Bajo de Nivel, 2ndo Sem, 2016
-TAREA 2 - Analisis Sint[actico
+Curso: Compiladores y Lenguajes de Bajo de Nivel, 2ndo Sem, 2017
+TAREA 2 - Analisis Sintáctico
 
 """
 import os
