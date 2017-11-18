@@ -2,6 +2,7 @@ jsonpy
 ============
 
 Compiladores FPUNA
+2nd Sem, 2017
 
 TAREA 1: Analizador léxico
 Para correr el script, se requiere Python 2.7
