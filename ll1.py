@@ -40,6 +40,8 @@ PR_NULL = 10
 # Fin de archivo
 EOF = 11
 
+TRADUCT = ['[', ']', '{', '}', ',', ':', 'literal cadena', 'literal num.', 'true', 'false', 'null',  'eof']
+
 # token invalido
 T_INVALID = 12
 
@@ -47,14 +49,19 @@ T_INVALID = 12
 N_JSON = 0
 N_ELEMENT = 1
 N_ARRAY = 2
-N_ELEMENT_LIST = 3
-N_ELEMENT_LIST_PRI = 4
-N_OBJECT = 5
-N_ATTR_LIST = 6
-N_ATTR_LIST_PRI = 7
-N_ATTR = 8
-N_ATTR_NAME = 9
-N_ATTR_VAL = 10
+N_ARRAY_PRI = 3
+N_ELEMENT_LIST = 4
+N_ELEMENT_LIST_PRI = 5
+N_OBJECT = 6
+N_OBJECT_PRI = 7
+N_ATTR_LIST = 8
+N_ATTR_LIST_PRI = 9
+N_ATTR = 10
+N_ATTR_NAME = 11
+N_ATTR_VAL = 12
+
+
+
 
 EMPTY = 'empty'
 
@@ -62,48 +69,56 @@ EMPTY = 'empty'
 # Para cada produccion, definimos sus componentes en cada tupla.
 # Se debe saber si el componente es terminal o no terminal con Ter y Rule, respectivamente
 rules = [
-    # 0 json -> element $
+    # 0 json -> element
     [(Rule, N_ELEMENT)],
     # 1 element -> object
     [(Rule, N_OBJECT)],
     # 2 element -> array
     [(Rule, N_ARRAY)],
-    # 3 array -> [ ]
-    [(Term, L_CORCHETE), (Term, R_CORCHETE)],
-    # 4 array -> [ element-list ]
-    [(Term, L_CORCHETE), (Rule, N_ELEMENT_LIST), (Term, R_CORCHETE)],
-    # 5 element-list -> element element-list-pri
+    # 3 array   -> [ array-pri
+    [(Term, L_CORCHETE), (Rule, N_ARRAY_PRI)],
+    # 4 array-pri -> element-list ]
+    [(Rule, N_ELEMENT_LIST), (Term, R_CORCHETE)],
+
+    # 5 array-pri -> ]
+    [(Term, R_CORCHETE)],
+    # 6 element-list -> element element-list-pri
     [(Rule, N_ELEMENT), (Rule, N_ELEMENT_LIST_PRI)],
-    # 6 element-list-prim -> , element element-list-pri
+    # 7 element-list-prim -> , element element-list-pri
     [(Term, COMA), (Rule, N_ELEMENT), (Rule, N_ELEMENT_LIST_PRI)],
-    # 7 element-list-prim -> empty
+    # 8 element-list-prim -> empty
     [(Term, EMPTY)],
-    # 8 object -> { }
-    [(Term, L_LLAVE), (Term, R_LLAVE)],
-    # 9 object -> { attr-list }
-    [(Term, L_LLAVE), (Rule, N_ATTR_LIST), (Term, R_LLAVE)],
-    # 10 attr-list -> attr attr-list-pri
+    # 9 object  -> { object-pri
+    [(Term, L_LLAVE), (Rule, N_OBJECT_PRI)],
+
+    # 10 object-pri ->  attr-list }
+    [(Rule, N_ATTR_LIST), (Term, R_LLAVE)],
+
+    # 11 object-pri ->  }
+    [(Term, R_LLAVE)],
+    # 12 attr-list -> attr attr-list-pri
     [(Rule, N_ATTR), (Rule, N_ATTR_LIST_PRI)],
-    # 11 attr-list-pri -> , attr attr-list-pri
+    # 13 attr-list-pri -> , attr attr-list-pri
     [(Term, COMA), (Rule, N_ATTR), (Rule, N_ATTR_LIST_PRI)],
-    # 12 attr-list-pri -> empty
+    # 14 attr-list-pri -> empty
     [(Term, EMPTY)],
-    # 13 attr -> attr-name : attr-value
+    # 15 attr -> attr-name : attr-value
     [(Rule, N_ATTR_NAME), (Term, DOS_PUNTOS), (Rule, N_ATTR_VAL)],
-    # 14 attr-name -> string
+    # 16 attr-name -> string
     [(Term, LITERAL_CADENA)],
-    # 15 attr-value -> element
+    # 17 attr-value -> element
     [(Rule, N_ELEMENT)],
-    # 16 attr-value -> string
+    # 18 attr-value -> string
     [(Term, LITERAL_CADENA)],
-    # 17 attr-value -> number
+    # 19 attr-value -> number
     [(Term, LITERAL_NUM)],
-    # 18 attr-value -> true
+    # 20 attr-value -> true
     [(Term, PR_TRUE)],
-    # 19 attr-value -> false
+    # 21 attr-value -> false
     [(Term, PR_FALSE)],
-    # 20 attr-value -> null
+    # 22 attr-value -> null
     [(Term, PR_NULL)],
+
 ]
 
 # Tabla de parsing
@@ -111,27 +126,32 @@ rules = [
 # Cada elemento de la fila representa a un terminal, ordenado asi:
 # [ ] { } , : string number true false null $
 #
+# 0 json
 tabla_parsing = [[0, -1, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-
+                 # 1 element
                  [2, -1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-
+                 # 2 array
                  [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-
-                 [5, -1, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-
-                 [-1, -1, -1, -1, 6, -1, -1, -1, -1, -1, -1, -1],
-
+                 # 3 array-pri
+                 [4, 5, 4, -1, -1, -1, -1, 'pop', -1, -1, -1, -1],
+                 # 4 element-list
+                 [6, -1, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+                 # 5 element-list-pri
+                 [-1, 'pop', -1, -1, 7, -1, -1, -1, -1, -1, -1, -1],
+                 # 6 object
                  [-1, -1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-
-                 [-1, -1, -1, -1, -1, -1, 10, -1, -1, -1, -1, -1],
-
-                 [-1, -1, -1, -1, 11, -1, -1, -1, -1, -1, -1, -1],
-
-                 [-1, -1, -1, -1, -1, -1, 13, -1, -1, -1, -1, -1],
-
-                 [-1, -1, -1, -1, -1, -1, 14, -1, -1, -1, -1, -1],
-
-                 [15, -1, 15, -1, -1, -1, 16, 17, 18, 19, 20, -1],
+                 # 7 object-pri
+                 [-1, -1, -1, 11, -1, -1, 10, -1, -1, -1, -1, -1],
+                 # 8 attr-list
+                 [-1, -1, -1, -1, -1, -1, 12, -1, -1, -1, -1, -1],
+                 # 9 attr-list-pri
+                 [-1, -1, -1, 'pop', 13, -1, -1, 'pop', -1, -1, -1, -1],
+                 # 10 attr
+                 [-1, -1, -1, -1, -1, -1, 15, -1, -1, -1, -1, -1],
+                 # 11 attr-name
+                 [-1, -1, -1, -1, -1, -1, 16, -1, -1, -1, -1, -1],
+                 # 12 attr-value
+                 [17, -1, 17, -1, -1, -1, 18, 19, 20, 21, 22, -1],
 
                  ]
 
@@ -199,31 +219,37 @@ def ll1_algoritmo(lista_tokens):
 
             if stack_value == token:
                 position += 1
-                print('pop', stack_value)
+                # print('pop', stack_value)
                 if token == EOF:
-                    print 'Input aceptado'
+                    print '***Input aceptado***'
             else:
-                print 'Error de sintaxis:', token
+                print 'Error de sintaxis. No se esperaba "%s"' % TRADUCT[token]
                 break
 
         elif stack_type == Rule:  # 1
             # se encuentra no terminal. Es una regla
 
-            print 'Valor en pila: ', stack_value, ' token: ', token
+            # print 'Valor en pila: ', stack_value, ' token: ', token
+            # mirar ACTION
             rule = tabla_parsing[stack_value][token]
 
-            print 'rule: ', rule
+            if rule == 'pop':
+                # pasar al sgte elemento de la pila. El pop ya se hizo.
+                continue
+
+            # print 'rule: ', rule
 
             for r in reversed(rules[rule]):
                 stack.append(r)
 
-        print 'stack: ', stack
+        # print 'stack: ', stack
 
 
 if __name__ == '__main__':
     try:
         # analisis lexico
         lista_tokens = lexer(sys.argv)
+        print lista_tokens
 
         # analisis sintactico
         ll1_algoritmo(lista_tokens)
